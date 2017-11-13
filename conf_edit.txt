@@ -1,0 +1,118 @@
+Add this to your worldserver.conf file at the bottom and adjust to you pref's.
+
+###################################################################################################
+# Grumbo'z Capture the Flag
+# by slp13at420 of EmuDevs.com
+#
+# Players must seek out the World Flag and tag it before they 
+# die or an apposing team member tags it.
+
+# This setting adjust what type of spawning.
+# 	CTF.WILLOW_WHISP
+#		Description: adjusts if the World Flag spawns in a single location or
+#				randomly thru the world.
+#		Default: 1 // 0 = fixed // 1 = random stored locations.
+
+CTF.WIL_O_WHISP = 1
+
+# This setting adjusts if the flag resets after each capture.
+#
+# 	CTF.FLAG_RESET 
+#		Description: Sets if the flag will stay with the winning team
+#				to be defended by them or reset back to the default 
+#				world flag and can be captured by either team.
+#
+#		Default: 0 // 0 = Stays with winning team // 1 = resets each win.
+
+CTF.FLAG_RESET = 0
+
+# This setting adjusts cooldown duration type.
+#	CTF.CD_TIMER_TYPE
+#		Description: This will allow the cooldown duration to be random. It uses
+#				CTF.CD_TIMER_MINIMUM for the minimum timer, and CTF.CD_TIMER as the
+#				maximum time.
+#				While set to fixed it will use CTF.CD_TIMER for the timer.
+#		Deault: 1 // 0 =  fixed // 1 = random.
+
+CTF.CD_TIMER_TYPE = 1
+
+# This setting adjusts the cooldown timer minimum length between rounds.
+# applies only when GCTF.CD_TIMER_TYPE = 1 // random
+#
+#	CTF.CD_TIMER_MINIMUM
+#		Description: When the cooldown timer is set to random, this will be used
+#				as the base minimum value in seconds.
+#		Default: 60 in seconds. // 60 = 1 minute // 300 = 5 minutes.
+
+CTF.CD_TIMER_MINIMUM = 60
+
+# This setting adjust the cooldown timer length between rounds.
+#	CTF.CD_TIMER	
+#		Description: Adjusts the duration of the break between World flag spawns.
+#		Default: 300 in seconds. // 60 = 1 minute // 300 = 5 minutes.
+#
+#		Set to 0 for no cooldown between rounds. ! Non Stop Action !
+
+CTF.CD_TIMER = 300
+
+# This setting is where you set the id for the default World Flag.
+#	CTF.DEFAULT_WORLD_FLAG_ID
+#		Description: set the id of the default World Flag. 
+#		Default: 600002 // custom item id . sql included with the System files.
+#			you must also set the ScriptName in the gameobject_template.
+
+CTF.DEFAULT_WORLD_FLAG_ID = 600002
+
+# This setting is where you set the scale/size for the World Flags.
+#	CTF.DEFAULT_WORLD_FLAG_SCALE
+#		Description: set the scale size of the World Flags. 
+#		Default: 30.00 // medium size. the larger the better for players to find.
+
+CTF.DEFAULT_WORLD_FLAG_SCALE = 30.00
+
+# This setting is where you can allow the system to announce the flag location to the
+# current holding team.
+#	CTF.HINT_SYSTEM
+#		Description: set the hint system. will announce area name of where the flag
+#				 has spawned.
+#		Default: 0 // 0 = no hint // 1 = hint only to holding team // 2 = announce 
+# 				to whole world.
+
+CTF.HINT_SYSTEM = 0
+
+# This setting is where you can allow the system to announce the flag location to the
+# current holding team.
+#	CTF.REQUIRE_FLAG_AURA
+#		Description: are players required to have a flag holder aura
+#					to tag the world flag.
+#
+#		Default: 1 // 0 = no Aura required // 1 = Aura required
+
+CTF.REQUIRE_FLAG_AURA = 1
+
+# This setting is where you can allow GM with minimum rank of x to use the spawn
+# commands
+#
+#	CTF.GM_RANK
+#		Description: required minimum GM rank to access gm commands
+#
+#		Default: 3
+
+CTF.GM_RANK = 3
+
+# This setting will adjust how often to check if player still eligible to carry
+# a team flag aura.
+# 
+#	CTF.PLAYER_AURA_CHECK_TIMER
+#		Upon gaining there teamflag aura a timed event to periodicaly check
+#		if a player can still carry their team flag aura. 
+#		i.e. if they turn on GM mode while carrying the aura they will forfeit
+# 		their aura. also can be expanded to check for other conditions.
+#		once. This will only tick while a player is eligible to carry the aura.
+#
+#		Default: 2 // in seconds
+
+CTF.PLAYER_AURA_CHECK_TIMER = 2
+
+#
+###################################################################################################
