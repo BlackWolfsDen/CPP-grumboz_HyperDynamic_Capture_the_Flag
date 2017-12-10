@@ -464,7 +464,7 @@ public:
 
 class WCTF_Team_Flag : public GameObjectScript
 {
-public: WCTF_Team_Flag() : GameObjectScript("WCTF_Team_Flag") { };
+public: WCTF_Team_Flag() : GameObjectScript("WCTF_Team_Flag") { }
 
 		bool OnGossipHello(Player* player, GameObject* go) // override
 		{
@@ -492,7 +492,7 @@ public: WCTF_Team_Flag() : GameObjectScript("WCTF_Team_Flag") { };
 
 class WCTF_World_Flag : public GameObjectScript
 {
-	public: WCTF_World_Flag() : GameObjectScript("WCTF_World_Flag") { };
+	public: WCTF_World_Flag() : GameObjectScript("WCTF_World_Flag") { }
 
 		 bool OnGossipHello(Player* player, GameObject* go) // override // virtual
 		{
