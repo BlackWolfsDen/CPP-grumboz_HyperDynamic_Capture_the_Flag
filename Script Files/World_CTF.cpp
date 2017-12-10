@@ -1,33 +1,40 @@
-// © Grumboz World Capture the Flag System © 
-// © By slp13at420 of EmuDevs.com © 
-// © an EmuDevs NomSoft - Only - release © 
-// © http://emudevs.com/showthread.php/5993-CPP-Grumbo-z-Capture-the-Flag-System?p=39857#post39857
+// Â© Grumboz World Capture the Flag System Â© 
+// Â© By slp13at420 of EmuDevs.com Â© 
+// Â© an EmuDevs NomSoft - Only - release Â© 
+// Â© http://emudevs.com/showthread.php/5993-CPP-Grumbo-z-Capture-the-Flag-System?p=39857#post39857
 
-// © Language:CPP © 
-// © Platform:TrinityCore © 
-// © Start:10-05-2016 © 
-// © Finish:10-07-2016 © 
-// © Release:10-07-2016 © 
-// © Primary Programmer:slp13at420 © 
-// © Secondary Programmers:none © 
+// Â© Language:CPP Â© 
+// Â© Platform:TrinityCore Â© 
+// Â© Start:10-05-2016 Â© 
+// Â© Finish:10-07-2016 Â© 
+// Â© Release:10-07-2016 Â© 
+// Â© Primary Programmer:slp13at420 Â© 
+// Â© Secondary Programmers:none Â© 
 
-// © My latest version of my beloved blood shed system ;) © 
-// ©  Do NOT remove any credits © 
-// ©  Don't share/rerelease on any other site other than EmuDevs.com © 
-// © Dont attempt to claim as your own work ... © 
+// Â© My latest version of my beloved blood shed system ;) Â© 
+// Â©  Do NOT remove any credits Â© 
+// Â©  Don't share/rerelease on any other site other than EmuDevs.com Â© 
+// Â© Dont attempt to claim as your own work ... Â© 
 
 #include "chat.h"
 #include "Config.h"
+#include "DatabaseEnv.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
+#include "GameTime.h"
 #include "GossipDef.h"
+#include "Log.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "QueryResult.h"
+#include "Random.h"
+#include "RBAC.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
 #include <unordered_map>
 #include "World.h"
 #include "World_CTF.h"
+#include "WorldSession.h"
 
 WorldCtf::WorldCtf() { }
 
@@ -139,16 +146,9 @@ void WorldCtf::GenerateNewRandomFlagGps()
 
 		if (sWorldCtf->GetWilOWhisp() && sWorldCtf->WorldFlagGps.size() > 1)
 		{
-			do
-			{
-				std::uniform_int_distribution<int> distribution1(1, sWorldCtf->WorldFlagGps.size());
+			id = urand(1, sWorldCtf->WorldFlagGps.size()); 
 
-				id = distribution1(sWorldCtf->generator);
-
-				if (sWorldCtf->WorldFlagGps[id].guid != 0)
-					break;
-
-			} while (sWorldCtf->WorldFlagGps[id].guid == 0);
+			if (!sWorldCtf->WorldFlagGps[id].guid) { sWorldCtf->GenerateNewRandomFlagGps(); }
 		}
 
 	sWorldCtf->SetActiveGO_ID(id);
@@ -177,7 +177,9 @@ void WorldCtf::AddNewWorldFlag(Player* player)
 
 		ObjectGuid::LowType guidLow = map->GenerateLowGuid<HighGuid::GameObject>();
 
-		if (!GO->Create(guidLow, id, map, startphasemask, x, y, z, o, 0, 0, 0, 0, 0, GO_STATE_READY, 0)) // attempt to create a GO with the guidlow, id and fill the shell with data retrieved with id.
+		QuaternionData gps = QuaternionData::fromEulerAnglesZYX(player->GetOrientation(), 0.f, 0.f);
+
+		if (!GO->Create(guidLow, id, map, startphasemask, *player, gps, 255, GO_STATE_READY)) // attempt to create a GO with the guidlow, id and fill the shell with data retrieved with id.
 		{
 			ChatHandler(player->GetSession()).PSendSysMessage("Flag build error..");
 			delete GO;
@@ -245,11 +247,7 @@ void WorldCtf::GenerateCoolDownTimer()
 {
 	uint32 t = sWorldCtf->GetDefaultTimerDuration();
 
-	if (sWorldCtf->GetTimerType())
-	{
-		std::uniform_int_distribution<int> distribution2(sWorldCtf->GetDefaultTimerDurationMinimum(), sWorldCtf->GetDefaultTimerDuration());
-		t = distribution2(sWorldCtf->generator); 
-	}
+	if (sWorldCtf->GetTimerType()) {t = urand(t, sWorldCtf->GetDefaultTimerDuration());}
 
 	sWorldCtf->SetCooldownTimer(t);
 }
@@ -427,7 +425,7 @@ class WCTF_Reset_Timer : public BasicEvent
 public:
 	WCTF_Reset_Timer(Player* player) : player(player)
 	{
-		uint64 current_time = sWorld->GetGameTime();
+		uint64 current_time = GameTime::GetGameTime();
 
 		player->m_Events.AddEvent(this, player->m_Events.CalculateTime(sWorldCtf->GetPlayerAuraCheckerTimer() * 1000)); // timed events are in ms while everything else is stored in seconds...
 	}
@@ -466,9 +464,14 @@ public:
 
 class WCTF_Team_Flag : public GameObjectScript
 {
-public: WCTF_Team_Flag() : GameObjectScript("WCTF_Team_Flag") { };
+public: 
+	WCTF_Team_Flag() : GameObjectScript("WCTF_Team_Flag") { }
 
-		bool OnGossipHello(Player* player, GameObject* go) override
+	struct WCTF_Team_FlagAI : public GameObjectAI
+	{
+		WCTF_Team_FlagAI(GameObject* go) : GameObjectAI(go) { }
+
+		bool GossipHello(Player* player/*, GameObject* go*/) override
 		{
 			if (player->IsGameMaster())
 			{
@@ -490,83 +493,91 @@ public: WCTF_Team_Flag() : GameObjectScript("WCTF_Team_Flag") { };
 				return true;
 			}
 		}
+	};
+
+	GameObjectAI* GetAI(GameObject* go) const override
+	{
+		return new WCTF_Team_FlagAI(go);
+	}
 };
 
 class WCTF_World_Flag : public GameObjectScript
 {
-	public: WCTF_World_Flag() : GameObjectScript("WCTF_World_Flag") { };
+	public: WCTF_World_Flag() : GameObjectScript("WCTF_World_Flag") { }
 
-		 bool OnGossipHello(Player* player, GameObject* go) override // virtual
-		{
-			if (player->IsGameMaster())
+			struct World_Flag : public GameObjectAI
 			{
-				ChatHandler(player->GetSession()).PSendSysMessage("You are in GM mode. Exit GM mode to enjoy.|r");
 
-				return true;
-			}
-			else
-			{
-				auto team_id = player->GetTeamId();
+				World_Flag(GameObject* go) : GameObjectAI(go) { }
 
-					if(sWorldCtf->GetRequireFlagAura() && !player->HasAura(sWorldCtf->WorldCtfAura[team_id].aura))
+				bool GossipHello(Player* player/*, GameObject* go*/) // override // virtual
+				{
+					if (player->IsGameMaster())
 					{
-						ChatHandler(player->GetSession()).PSendSysMessage("You need your `Flag Carrier` aura to tag this flag.");
+						ChatHandler(player->GetSession()).PSendSysMessage("You are in GM mode. Exit GM mode to enjoy.|r");
 
 						return true;
 					}
-
-					if (!sWorldCtf->GetRequireFlagAura() || player->HasAura(sWorldCtf->WorldCtfAura[team_id].aura))
+					else
 					{
-						if (team_id != sWorldCtf->GetActiveGO_Team_ID())
-						{
-							uint64 currTime = sWorld->GetGameTime();
-							uint32 guid = player->GetGUID();
+						auto team_id = player->GetTeamId();
 
-							sWorldCtf->WorldCtfScore[team_id].score += 1;
-							sWorldCtf->WorldCtfPlayerInfo[guid].captures += 1;
+							if(sWorldCtf->GetRequireFlagAura() && !player->HasAura(sWorldCtf->WorldCtfAura[team_id].aura))
+							{
+								ChatHandler(player->GetSession()).PSendSysMessage("You need your `Flag Carrier` aura to tag this flag.");
 
-							sWorldCtf->ResetPlayer(player);
-							sWorldCtf->ResetAllPlayers();
+								return true;
+							}
 
-							std::string msg1 = player->GetName() + " of the " + sWorldCtf->WorldCtfFlagInfo[team_id].name + " has claimed the World flag.";
+							if (!sWorldCtf->GetRequireFlagAura() || player->HasAura(sWorldCtf->WorldCtfAura[team_id].aura))
+							{
+								if (team_id != sWorldCtf->GetActiveGO_Team_ID())
+								{
+									GameObject* go = me;
+									uint64 currTime = GameTime::GetGameTime();
+									uint32 guid = player->GetGUID();
 
-							std::string msg2 = "Current Score - Alliance:" + sWorldCtf->ConvertNumberToString(sWorldCtf->WorldCtfScore[0].score);
-							msg2 += " || Horde:" + sWorldCtf->ConvertNumberToString(sWorldCtf->WorldCtfScore[1].score);
+									sWorldCtf->WorldCtfScore[team_id].score += 1;
+									sWorldCtf->WorldCtfPlayerInfo[guid].captures += 1;
 
-							ChatHandler(player->GetSession()).PSendSysMessage("Captures:%u", sWorldCtf->WorldCtfPlayerInfo[guid].captures);
+									sWorldCtf->ResetPlayer(player);
+									sWorldCtf->ResetAllPlayers();
 
-								if (!sWorldCtf->GetFlagReset()) 
-								{ 
-									sWorldCtf->SetActiveGO_Team_ID(team_id); 
-								} 
-								else 
-								{ 
-									sWorldCtf->SetActiveGO_Team_ID(2); 
+									std::string msg1 = player->GetName() + " of the " + sWorldCtf->WorldCtfFlagInfo[team_id].name + " has claimed the World flag.";
+
+									std::string msg2 = "Current Score - Alliance:" + sWorldCtf->ConvertNumberToString(sWorldCtf->WorldCtfScore[0].score);
+									msg2 += " || Horde:" + sWorldCtf->ConvertNumberToString(sWorldCtf->WorldCtfScore[1].score);
+
+									ChatHandler(player->GetSession()).PSendSysMessage("Captures:%u", sWorldCtf->WorldCtfPlayerInfo[guid].captures);
+
+										if (!sWorldCtf->GetFlagReset()) 
+										{ 
+											sWorldCtf->SetActiveGO_Team_ID(team_id); 
+										} 
+										else 
+										{ 
+											sWorldCtf->SetActiveGO_Team_ID(2); 
+										}
+
+									sWorldCtf->SetWinningGameTime(currTime);
+									sWorldCtf->GenerateCoolDownTimer();
+									sWorldCtf->GenerateNewRandomFlagGps();
+							
+									sWorldCtf->SendWorldMsg(2, msg1);
+									sWorldCtf->SendWorldMsg(2, msg2);
+
+									go->SetPhaseMask(0, true);
 								}
 
-							sWorldCtf->SetWinningGameTime(currTime);
-							sWorldCtf->GenerateCoolDownTimer();
-							sWorldCtf->GenerateNewRandomFlagGps();
-							
-							sWorldCtf->SendWorldMsg(2, msg1);
-							sWorldCtf->SendWorldMsg(2, msg2);
-
-							go->SetPhaseMask(0, true);
-						}
-
+							}
 					}
-			}
 
-			return true;
-		}
-
-		struct World_Flag : public GameObjectAI
-		{
-
-			World_Flag(GameObject* go) : GameObjectAI(go) { } 
+					return true;
+				}
 
 				void UpdateAI(uint32 diff) // override // This function updates every 1000 (I believe) and is used for the timers, etc
 				{
+					GameObject* go = me;
 					uint32 guid = go->GetSpawnId();
 
 						if(!sWorldCtf->GetFlagCtfID(guid))
@@ -580,7 +591,7 @@ class WCTF_World_Flag : public GameObjectScript
 							uint32 defaultflagid = sWorldCtf->GetDefaultWorldFlagID();
 							uint8 activeteamid = sWorldCtf->GetActiveGO_Team_ID();
 
-							uint64 currTime = sWorld->GetGameTime();
+							uint64 currTime = GameTime::GetGameTime();
 							uint32 delay = sWorldCtf->GetCooldownTimer();
 							uint64 winTime = sWorldCtf->GetWinningGameTime();
 
@@ -960,9 +971,9 @@ public:
 
 void AddSC_Grumboz_World_Ctf()
 {
-	new WCTF_Load_Conf;
-	new WCTF_Team_Flag;
-	new WCTF_World_Flag;
-	new WCTF_Player_Actions;
-	new WCTF_commands;
+	new WCTF_Load_Conf();
+	new WCTF_Team_Flag();
+	new WCTF_World_Flag();
+	new WCTF_Player_Actions();
+	new WCTF_commands();
 }
