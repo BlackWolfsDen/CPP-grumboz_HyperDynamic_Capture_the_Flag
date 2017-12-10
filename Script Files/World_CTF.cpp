@@ -1,33 +1,40 @@
-// © Grumboz World Capture the Flag System © 
-// © By slp13at420 of EmuDevs.com © 
-// © an EmuDevs NomSoft - Only - release © 
-// © http://emudevs.com/showthread.php/5993-CPP-Grumbo-z-Capture-the-Flag-System?p=39857#post39857
+// Â© Grumboz World Capture the Flag System Â© 
+// Â© By slp13at420 of EmuDevs.com Â© 
+// Â© an EmuDevs NomSoft - Only - release Â© 
+// Â© http://emudevs.com/showthread.php/5993-CPP-Grumbo-z-Capture-the-Flag-System?p=39857#post39857
 
-// © Language:CPP © 
-// © Platform:TrinityCore © 
-// © Start:10-05-2016 © 
-// © Finish:10-07-2016 © 
-// © Release:10-07-2016 © 
-// © Primary Programmer:slp13at420 © 
-// © Secondary Programmers:none © 
+// Â© Language:CPP Â© 
+// Â© Platform:TrinityCore Â© 
+// Â© Start:10-05-2016 Â© 
+// Â© Finish:10-07-2016 Â© 
+// Â© Release:10-07-2016 Â© 
+// Â© Primary Programmer:slp13at420 Â© 
+// Â© Secondary Programmers:none Â© 
 
-// © My latest version of my beloved blood shed system ;) © 
-// ©  Do NOT remove any credits © 
-// ©  Don't share/rerelease on any other site other than EmuDevs.com © 
-// © Dont attempt to claim as your own work ... © 
+// Â© My latest version of my beloved blood shed system ;) Â© 
+// Â©  Do NOT remove any credits Â© 
+// Â©  Don't share/rerelease on any other site other than EmuDevs.com Â© 
+// Â© Dont attempt to claim as your own work ... Â© 
 
 #include "chat.h"
 #include "Config.h"
+#include "DatabaseEnv.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
+#include "GameTime.h"
 #include "GossipDef.h"
+#include "Log.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "QueryResult.h"
+#include "Random.h"
+#include "RBAC.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
 #include <unordered_map>
 #include "World.h"
 #include "World_CTF.h"
+#include "WorldSession.h"
 
 WorldCtf::WorldCtf() { }
 
@@ -139,16 +146,9 @@ void WorldCtf::GenerateNewRandomFlagGps()
 
 		if (sWorldCtf->GetWilOWhisp() && sWorldCtf->WorldFlagGps.size() > 1)
 		{
-			do
-			{
-				std::uniform_int_distribution<int> distribution1(1, sWorldCtf->WorldFlagGps.size());
+			id = urand(1, sWorldCtf->WorldFlagGps.size()); 
 
-				id = distribution1(sWorldCtf->generator);
-
-				if (sWorldCtf->WorldFlagGps[id].guid != 0)
-					break;
-
-			} while (sWorldCtf->WorldFlagGps[id].guid == 0);
+			if (!sWorldCtf->WorldFlagGps[id].guid) { sWorldCtf->GenerateNewRandomFlagGps(); }
 		}
 
 	sWorldCtf->SetActiveGO_ID(id);
@@ -177,7 +177,9 @@ void WorldCtf::AddNewWorldFlag(Player* player)
 
 		ObjectGuid::LowType guidLow = map->GenerateLowGuid<HighGuid::GameObject>();
 
-		if (!GO->Create(guidLow, id, map, startphasemask, x, y, z, o, 0, 0, 0, 0, 0, GO_STATE_READY, 0)) // attempt to create a GO with the guidlow, id and fill the shell with data retrieved with id.
+		QuaternionData gps = QuaternionData::fromEulerAnglesZYX(player->GetOrientation(), 0.f, 0.f);
+
+		if (!GO->Create(guidLow, id, map, startphasemask, *player, gps, 255, GO_STATE_READY)) // attempt to create a GO with the guidlow, id and fill the shell with data retrieved with id.
 		{
 			ChatHandler(player->GetSession()).PSendSysMessage("Flag build error..");
 			delete GO;
@@ -245,11 +247,7 @@ void WorldCtf::GenerateCoolDownTimer()
 {
 	uint32 t = sWorldCtf->GetDefaultTimerDuration();
 
-	if (sWorldCtf->GetTimerType())
-	{
-		std::uniform_int_distribution<int> distribution2(sWorldCtf->GetDefaultTimerDurationMinimum(), sWorldCtf->GetDefaultTimerDuration());
-		t = distribution2(sWorldCtf->generator); 
-	}
+	if (sWorldCtf->GetTimerType()) {t = urand(t, sWorldCtf->GetDefaultTimerDuration());}
 
 	sWorldCtf->SetCooldownTimer(t);
 }
@@ -427,7 +425,7 @@ class WCTF_Reset_Timer : public BasicEvent
 public:
 	WCTF_Reset_Timer(Player* player) : player(player)
 	{
-		uint64 current_time = sWorld->GetGameTime();
+		uint64 current_time = GameTime::GetGameTime();
 
 		player->m_Events.AddEvent(this, player->m_Events.CalculateTime(sWorldCtf->GetPlayerAuraCheckerTimer() * 1000)); // timed events are in ms while everything else is stored in seconds...
 	}
@@ -519,7 +517,7 @@ class WCTF_World_Flag : public GameObjectScript
 					{
 						if (team_id != sWorldCtf->GetActiveGO_Team_ID())
 						{
-							uint64 currTime = sWorld->GetGameTime();
+							uint64 currTime = GameTime::GetGameTime();
 							uint32 guid = player->GetGUID();
 
 							sWorldCtf->WorldCtfScore[team_id].score += 1;
@@ -580,7 +578,7 @@ class WCTF_World_Flag : public GameObjectScript
 							uint32 defaultflagid = sWorldCtf->GetDefaultWorldFlagID();
 							uint8 activeteamid = sWorldCtf->GetActiveGO_Team_ID();
 
-							uint64 currTime = sWorld->GetGameTime();
+							uint64 currTime = GameTime::GetGameTime();
 							uint32 delay = sWorldCtf->GetCooldownTimer();
 							uint64 winTime = sWorldCtf->GetWinningGameTime();
 
