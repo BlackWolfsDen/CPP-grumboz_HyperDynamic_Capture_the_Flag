@@ -466,7 +466,7 @@ class WCTF_Team_Flag : public GameObjectScript
 {
 public: WCTF_Team_Flag() : GameObjectScript("WCTF_Team_Flag") { };
 
-		bool OnGossipHello(Player* player, GameObject* go) override
+		bool OnGossipHello(Player* player, GameObject* go) // override
 		{
 			if (player->IsGameMaster())
 			{
@@ -494,7 +494,7 @@ class WCTF_World_Flag : public GameObjectScript
 {
 	public: WCTF_World_Flag() : GameObjectScript("WCTF_World_Flag") { };
 
-		 bool OnGossipHello(Player* player, GameObject* go) override // virtual
+		 bool OnGossipHello(Player* player, GameObject* go) // override // virtual
 		{
 			if (player->IsGameMaster())
 			{
