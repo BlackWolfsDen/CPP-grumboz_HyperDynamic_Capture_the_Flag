@@ -29,6 +29,7 @@
 #include "QueryResult.h"
 #include "Random.h"
 #include "RBAC.h"
+#include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
 #include <unordered_map>
@@ -464,9 +465,14 @@ public:
 
 class WCTF_Team_Flag : public GameObjectScript
 {
-public: WCTF_Team_Flag() : GameObjectScript("WCTF_Team_Flag") { }
+public: 
+	WCTF_Team_Flag() : GameObjectScript("WCTF_Team_Flag") { }
 
-		bool OnGossipHello(Player* player, GameObject* go) // override
+	struct WCTF_Team_FlagAI : public GameObjectAI
+	{
+		WCTF_Team_FlagAI(GameObject* go) : GameObjectAI(go) { }
+
+		bool GossipHello(Player* player/*, GameObject* go*/) override
 		{
 			if (player->IsGameMaster())
 			{
@@ -488,83 +494,91 @@ public: WCTF_Team_Flag() : GameObjectScript("WCTF_Team_Flag") { }
 				return true;
 			}
 		}
+	};
+
+	GameObjectAI* GetAI(GameObject* go) const override
+	{
+		return new WCTF_Team_FlagAI(go);
+	}
 };
 
 class WCTF_World_Flag : public GameObjectScript
 {
 	public: WCTF_World_Flag() : GameObjectScript("WCTF_World_Flag") { }
 
-		 bool OnGossipHello(Player* player, GameObject* go) // override // virtual
-		{
-			if (player->IsGameMaster())
+			struct World_Flag : public GameObjectAI
 			{
-				ChatHandler(player->GetSession()).PSendSysMessage("You are in GM mode. Exit GM mode to enjoy.|r");
 
-				return true;
-			}
-			else
-			{
-				auto team_id = player->GetTeamId();
+				World_Flag(GameObject* go) : GameObjectAI(go) { }
 
-					if(sWorldCtf->GetRequireFlagAura() && !player->HasAura(sWorldCtf->WorldCtfAura[team_id].aura))
+				bool GossipHello(Player* player/*, GameObject* go*/) // override // virtual
+				{
+					if (player->IsGameMaster())
 					{
-						ChatHandler(player->GetSession()).PSendSysMessage("You need your `Flag Carrier` aura to tag this flag.");
+						ChatHandler(player->GetSession()).PSendSysMessage("You are in GM mode. Exit GM mode to enjoy.|r");
 
 						return true;
 					}
-
-					if (!sWorldCtf->GetRequireFlagAura() || player->HasAura(sWorldCtf->WorldCtfAura[team_id].aura))
+					else
 					{
-						if (team_id != sWorldCtf->GetActiveGO_Team_ID())
-						{
-							uint64 currTime = GameTime::GetGameTime();
-							uint32 guid = player->GetGUID();
+						auto team_id = player->GetTeamId();
 
-							sWorldCtf->WorldCtfScore[team_id].score += 1;
-							sWorldCtf->WorldCtfPlayerInfo[guid].captures += 1;
+							if(sWorldCtf->GetRequireFlagAura() && !player->HasAura(sWorldCtf->WorldCtfAura[team_id].aura))
+							{
+								ChatHandler(player->GetSession()).PSendSysMessage("You need your `Flag Carrier` aura to tag this flag.");
 
-							sWorldCtf->ResetPlayer(player);
-							sWorldCtf->ResetAllPlayers();
+								return true;
+							}
 
-							std::string msg1 = player->GetName() + " of the " + sWorldCtf->WorldCtfFlagInfo[team_id].name + " has claimed the World flag.";
+							if (!sWorldCtf->GetRequireFlagAura() || player->HasAura(sWorldCtf->WorldCtfAura[team_id].aura))
+							{
+								if (team_id != sWorldCtf->GetActiveGO_Team_ID())
+								{
+									GameObject* go = me;
+									uint64 currTime = GameTime::GetGameTime();
+									uint32 guid = player->GetGUID();
 
-							std::string msg2 = "Current Score - Alliance:" + sWorldCtf->ConvertNumberToString(sWorldCtf->WorldCtfScore[0].score);
-							msg2 += " || Horde:" + sWorldCtf->ConvertNumberToString(sWorldCtf->WorldCtfScore[1].score);
+									sWorldCtf->WorldCtfScore[team_id].score += 1;
+									sWorldCtf->WorldCtfPlayerInfo[guid].captures += 1;
 
-							ChatHandler(player->GetSession()).PSendSysMessage("Captures:%u", sWorldCtf->WorldCtfPlayerInfo[guid].captures);
+									sWorldCtf->ResetPlayer(player);
+									sWorldCtf->ResetAllPlayers();
 
-								if (!sWorldCtf->GetFlagReset()) 
-								{ 
-									sWorldCtf->SetActiveGO_Team_ID(team_id); 
-								} 
-								else 
-								{ 
-									sWorldCtf->SetActiveGO_Team_ID(2); 
+									std::string msg1 = player->GetName() + " of the " + sWorldCtf->WorldCtfFlagInfo[team_id].name + " has claimed the World flag.";
+
+									std::string msg2 = "Current Score - Alliance:" + sWorldCtf->ConvertNumberToString(sWorldCtf->WorldCtfScore[0].score);
+									msg2 += " || Horde:" + sWorldCtf->ConvertNumberToString(sWorldCtf->WorldCtfScore[1].score);
+
+									ChatHandler(player->GetSession()).PSendSysMessage("Captures:%u", sWorldCtf->WorldCtfPlayerInfo[guid].captures);
+
+										if (!sWorldCtf->GetFlagReset()) 
+										{ 
+											sWorldCtf->SetActiveGO_Team_ID(team_id); 
+										} 
+										else 
+										{ 
+											sWorldCtf->SetActiveGO_Team_ID(2); 
+										}
+
+									sWorldCtf->SetWinningGameTime(currTime);
+									sWorldCtf->GenerateCoolDownTimer();
+									sWorldCtf->GenerateNewRandomFlagGps();
+							
+									sWorldCtf->SendWorldMsg(2, msg1);
+									sWorldCtf->SendWorldMsg(2, msg2);
+
+									go->SetPhaseMask(0, true);
 								}
 
-							sWorldCtf->SetWinningGameTime(currTime);
-							sWorldCtf->GenerateCoolDownTimer();
-							sWorldCtf->GenerateNewRandomFlagGps();
-							
-							sWorldCtf->SendWorldMsg(2, msg1);
-							sWorldCtf->SendWorldMsg(2, msg2);
-
-							go->SetPhaseMask(0, true);
-						}
-
+							}
 					}
-			}
 
-			return true;
-		}
-
-		struct World_Flag : public GameObjectAI
-		{
-
-			World_Flag(GameObject* go) : GameObjectAI(go) { } 
+					return true;
+				}
 
 				void UpdateAI(uint32 diff) // override // This function updates every 1000 (I believe) and is used for the timers, etc
 				{
+					GameObject* go = me;
 					uint32 guid = go->GetSpawnId();
 
 						if(!sWorldCtf->GetFlagCtfID(guid))
@@ -958,9 +972,9 @@ public:
 
 void AddSC_Grumboz_World_Ctf()
 {
-	new WCTF_Load_Conf;
-	new WCTF_Team_Flag;
-	new WCTF_World_Flag;
-	new WCTF_Player_Actions;
-	new WCTF_commands;
+	new WCTF_Load_Conf();
+	new WCTF_Team_Flag();
+	new WCTF_World_Flag();
+	new WCTF_Player_Actions();
+	new WCTF_commands();
 }
