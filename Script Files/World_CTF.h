@@ -114,7 +114,6 @@ public:
 	std::unordered_map<uint8, WorldCtfFlagInfo_Elements> WorldCtfFlagInfo;
 
 	// Public Variables
-	std::default_random_engine generator;
 	bool test;
 
 private:
