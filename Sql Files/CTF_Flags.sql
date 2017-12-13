@@ -6,6 +6,11 @@ REPLACE INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconN
 (600001, 10, 5913, 'Horde Team Flag', 'interact', 2, 2, 3000, 'WCTF_Team_Flag', 12340),
 (600002, 10, 7953, 'Realm World Flag', 'interact', 35, 25, 0, 'WCTF_World_Flag', 12340);
 
+REPLACE INTO `gameobject_template_addon` (`entry`, `faction`) VALUES 
+(600000, 1),
+(600001, 2),
+(600002, 35);
+
 -- team `aura` flags spawned in Throne rooms IronForge/Orgrimmar
 REPLACE INTO `gameobject` (`id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `position_x`, `position_y`, `position_z`, `orientation`, `rotation0`, `rotation1`, `rotation2`, `rotation3`, `spawntimesecs`, `animprogress`, `state`, `VerifiedBuild`) VALUES 
 (600000, 0, 0, 0, 1, 1, -4858.69, -1031.16, 502.188, 5.38339, 0, 0, 0.434874, -0.900491, 300, 0, 1, 0),
