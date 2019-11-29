@@ -1,20 +1,20 @@
-// Â© Grumboz World Capture the Flag System Â© 
-// Â© By slp13at420 of EmuDevs.com Â© 
-// Â© an EmuDevs NomSoft - Only - release Â© 
-// Â© http://emudevs.com/showthread.php/5993-CPP-Grumbo-z-Capture-the-Flag-System?p=39857#post39857
+// © Grumboz World Capture the Flag System © 
+// © By slp13at420 of EmuDevs.com © 
+// © an EmuDevs NomSoft - Only - release © 
+// © http://emudevs.com/showthread.php/5993-CPP-Grumbo-z-Capture-the-Flag-System?p=39857#post39857
 
-// Â© Language:CPP Â© 
-// Â© Platform:TrinityCore Â© 
-// Â© Start:10-05-2016 Â© 
-// Â© Finish:10-07-2016 Â© 
-// Â© Release:10-07-2016 Â© 
-// Â© Primary Programmer:slp13at420 Â© 
-// Â© Secondary Programmers:none Â© 
+// © Language:CPP © 
+// © Platform:TrinityCore © 
+// © Start:10-05-2016 © 
+// © Finish:10-07-2016 © 
+// © Release:10-07-2016 © 
+// © Primary Programmer:slp13at420 © 
+// © Secondary Programmers:none © 
 
-// Â© My latest version of my beloved blood shed system ;) Â© 
-// Â©  Do NOT remove any credits Â© 
-// Â©  Don't share/rerelease on any other site other than EmuDevs.com Â© 
-// Â© Dont attempt to claim as your own work ... Â© 
+// © My latest version of my beloved blood shed system ;) © 
+// ©  Do NOT remove any credits © 
+// ©  Don't share/rerelease on any other site other than EmuDevs.com © 
+// © Dont attempt to claim as your own work ... © 
 
 #include "chat.h"
 #include "Config.h"
@@ -23,6 +23,8 @@
 #include "GameObjectAI.h"
 #include "GameTime.h"
 #include "GossipDef.h"
+#include "Custom/World_CTF.h"
+#include "Language.h"
 #include "Log.h"
 #include "ObjectMgr.h"
 #include "Player.h"
@@ -33,14 +35,15 @@
 #include "ScriptMgr.h"
 #include <unordered_map>
 #include "World.h"
-#include "World_CTF.h"
 #include "WorldSession.h"
 
 WorldCtf::WorldCtf() { }
 
 WorldCtf::~WorldCtf()
 {
-	for (std::unordered_map<uint32, WorldFlagGps_Elements>::iterator itr = WorldFlagGps.begin(); itr != WorldFlagGps.end(); ++itr)
+    if (sWorldCtf->test) { TC_LOG_INFO("server.loading", ">>    <[{DEFINE + CLEAR TABLES}]>    <<"); }
+
+    for (std::unordered_map<uint32, WorldFlagGps_Elements>::iterator itr = WorldFlagGps.begin(); itr != WorldFlagGps.end(); ++itr)
 		delete &itr->second;
 	for (std::unordered_map<uint32, WorldCtfPlayerInfo_Elements>::iterator itr = WorldCtfPlayerInfo.begin(); itr != WorldCtfPlayerInfo.end(); ++itr)
 		delete &itr->second;
@@ -422,9 +425,10 @@ void WorldCtf::UpdateGameObject(GameObject* go)
 
 class WCTF_Reset_Timer : public BasicEvent
 {
-public:
+public: 
+
 	WCTF_Reset_Timer(Player* player) : player(player)
-	{
+    {
 		uint64 current_time = GameTime::GetGameTime();
 
 		player->m_Events.AddEvent(this, player->m_Events.CalculateTime(sWorldCtf->GetPlayerAuraCheckerTimer() * 1000)); // timed events are in ms while everything else is stored in seconds...
@@ -464,8 +468,7 @@ public:
 
 class WCTF_Team_Flag : public GameObjectScript
 {
-public: 
-	WCTF_Team_Flag() : GameObjectScript("WCTF_Team_Flag") { }
+public: WCTF_Team_Flag() : GameObjectScript("WCTF_Team_Flag") { };
 
 	struct WCTF_Team_FlagAI : public GameObjectAI
 	{
@@ -503,7 +506,7 @@ public:
 
 class WCTF_World_Flag : public GameObjectScript
 {
-	public: WCTF_World_Flag() : GameObjectScript("WCTF_World_Flag") { }
+public: WCTF_World_Flag() : GameObjectScript("WCTF_World_Flag") { };
 
 			struct World_Flag : public GameObjectAI
 			{
@@ -701,8 +704,7 @@ public: WCTF_Player_Actions() : PlayerScript("WCTF_Player_Actions") { };
 
 class WCTF_commands : public CommandScript
 {
-public:
-	WCTF_commands() : CommandScript("WCTF_commands") { }
+public: WCTF_commands() : CommandScript("WCTF_commands") { };
 
 	std::vector<ChatCommand> GetCommands() const
 	{
@@ -867,7 +869,7 @@ public:
 				if (object)
 				{
 					object->RemoveFromWorld();
-					object->DeleteFromDB();
+					object->DeleteFromDB(object->GetSpawnId());
 
 					sWorldCtf->UpdateWorldFlagDataBase(1, object->GetSpawnId(), "", 0, 0, 0, 0.0, 0.0, 0.0, 0.0);
 				}
@@ -969,7 +971,7 @@ public:
 	}
 };
 
-void AddSC_Grumboz_World_Ctf()
+void AddSC_Grumboz_CTF()
 {
 	new WCTF_Load_Conf();
 	new WCTF_Team_Flag();

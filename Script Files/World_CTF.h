@@ -43,7 +43,7 @@ struct WorldCtfAura_Elements
 	uint32 aura;
 };
 
-class WorldCtf
+class TC_GAME_API WorldCtf
 {
 
 private:
@@ -114,7 +114,7 @@ public:
 	std::unordered_map<uint8, WorldCtfFlagInfo_Elements> WorldCtfFlagInfo;
 
 	// Public Variables
-	std::default_random_engine generator;
+//	std::default_random_engine generator;
 	bool test;
 
 private:
